@@ -77,7 +77,7 @@ export default function MotionBlurText() {
       ease: "power3.out",
       delay: 0.4,
       onUpdate: () => applyBlur(proxy.blur),
-      onComplete: () => gsap.delayedCall(HOLD, transition),
+      onComplete: () => { gsap.delayedCall(HOLD, transition); },
     });
 
     return () => {
