@@ -3,80 +3,103 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 
-const TEXTS: string[] = ["MEDITATIONS ON RUINS", "RUINS.LTD"];
+const TEXTS: string[]  = ["MEDITATIONS ON RUINS", "RUINS.LTD"];
 const HOLD     = 2.4;
 const OUT_DUR  = 0.65;
 const IN_DUR   = 0.65;
-const MAX_BLUR = 80;
 const TWOS_MS  = 1000 / 12;
 
+// Ghost layers — each is the same text, stretched and faded
+// to simulate a horizontal motion smear
+const GHOSTS = [
+  { scaleX: 1.04, opacity: 0.5 },
+  { scaleX: 1.12, opacity: 0.3 },
+  { scaleX: 1.28, opacity: 0.18 },
+  { scaleX: 1.55, opacity: 0.10 },
+  { scaleX: 1.90, opacity: 0.05 },
+];
+
 export default function MotionBlurText() {
-  const elRef       = useRef<HTMLDivElement>(null);
-  const blurNodeRef = useRef<SVGFEGaussianBlurElement>(null);
-  const currentRef  = useRef<number>(0);
+  const wrapRef    = useRef<HTMLDivElement>(null);
+  const mainRef    = useRef<HTMLDivElement>(null);
+  const ghostRefs  = useRef<(HTMLDivElement | null)[]>([]);
+  const currentRef = useRef<number>(0);
 
   useEffect(() => {
-    const el       = elRef.current;
-    const blurNode = blurNodeRef.current;
-    if (!el || !blurNode) return;
+    const wrap   = wrapRef.current;
+    const main   = mainRef.current;
+    const ghosts = ghostRefs.current;
+    if (!wrap || !main) return;
 
-    const proxy = { blur: 0 };
+    // proxy: 0 = sharp, 1 = full smear
+    const proxy = { t: 0 };
 
-    function applyBlur(v: number) {
-      if (!blurNode) return;
-      blurNode.setAttribute("stdDeviation", `${v} 0`);
-      el!.style.filter = v > 0.2 ? "url(#hblur)" : "none";
+    let lastSnap = 0;
+    let snappedT = 0;
+
+    function applySmear(t: number) {
+      main.style.opacity = String(1 - t * 0.85);
+      ghosts.forEach((g, i) => {
+        if (!g) return;
+        const def = GHOSTS[i];
+        if (!def) return;
+        const scaleX = 1 + (def.scaleX - 1) * t;
+        g.style.transform = `translateX(-50%) scaleX(${scaleX})`;
+        g.style.opacity   = String(def.opacity * t);
+      });
     }
 
-    let lastSnap    = 0;
-    let snappedBlur = 0;
-
-    function applyBlurOnTwos(rawBlur: number) {
+    function applySmearOnTwos(raw: number) {
       const now = performance.now();
       if (now - lastSnap >= TWOS_MS) {
-        snappedBlur = rawBlur;
-        lastSnap    = now;
+        snappedT = raw;
+        lastSnap = now;
       }
-      applyBlur(snappedBlur);
+      applySmear(snappedT);
+    }
+
+    function setAllText(txt: string) {
+      main.textContent = txt;
+      ghosts.forEach(g => { if (g) g.textContent = txt; });
     }
 
     function transition() {
       const next = (currentRef.current + 1) % TEXTS.length;
-      gsap
-        .timeline({
-          onComplete: () => {
-            currentRef.current = next;
-            gsap.delayedCall(HOLD, transition);
-          },
-        })
+
+      gsap.timeline({
+        onComplete: () => {
+          currentRef.current = next;
+          gsap.delayedCall(HOLD, transition);
+        },
+      })
         .to(proxy, {
-          blur: MAX_BLUR,
+          t: 1,
           duration: OUT_DUR,
           ease: "power2.in",
-          onUpdate: () => applyBlurOnTwos(proxy.blur),
+          onUpdate: () => applySmearOnTwos(proxy.t),
         })
         .call(() => {
-          if (el) el.textContent = TEXTS[next] ?? "";
+          setAllText(TEXTS[next] ?? "");
         })
         .to(proxy, {
-          blur: 0,
+          t: 0,
           duration: IN_DUR,
           ease: "power2.out",
-          onUpdate: () => applyBlurOnTwos(proxy.blur),
+          onUpdate: () => applySmearOnTwos(proxy.t),
         });
     }
 
-    el.textContent   = TEXTS[0] ?? "";
-    proxy.blur       = MAX_BLUR;
-    applyBlur(proxy.blur);
-    el.style.opacity = "1";
+    // Initial reveal — smooth, no stutter on load
+    setAllText(TEXTS[0] ?? "");
+    applySmear(1);
+    wrap.style.opacity = "1";
 
     gsap.to(proxy, {
-      blur: 0,
+      t: 0,
       duration: 1.4,
       ease: "power3.out",
       delay: 0.4,
-      onUpdate: () => applyBlur(proxy.blur),
+      onUpdate: () => applySmear(proxy.t),
       onComplete: () => { gsap.delayedCall(HOLD, transition); },
     });
 
@@ -85,43 +108,49 @@ export default function MotionBlurText() {
     };
   }, []);
 
-  return (
-    <>
-      <svg
-        style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <filter
-            id="hblur"
-            x="-500%"
-            width="1100%"
-            y="-10%"
-            height="120%"
-            colorInterpolationFilters="sRGB"
-          >
-            <feGaussianBlur ref={blurNodeRef} stdDeviation="0 0" />
-          </filter>
-        </defs>
-      </svg>
+  const textStyle: React.CSSProperties = {
+    fontFamily:    "var(--font-public-sans), sans-serif",
+    fontWeight:    400,
+    fontSize:      "clamp(10px, 1.7vw, 26px)",
+    letterSpacing: "0.4em",
+    color:         "oklch(98.6% 0.002 67.8)",
+    textTransform: "uppercase",
+    whiteSpace:    "nowrap",
+    paddingRight:  "0.4em",
+    willChange:    "transform, opacity",
+    userSelect:    "none",
+  };
 
+  return (
+    <div
+      ref={wrapRef}
+      style={{ position: "relative", opacity: 0 }}
+      aria-label="Meditations on Ruins"
+    >
+      {/* Ghost smear layers — rendered behind main */}
+      {GHOSTS.map((_, i) => (
+        <div
+          key={i}
+          ref={el => { ghostRefs.current[i] = el; }}
+          aria-hidden="true"
+          style={{
+            ...textStyle,
+            position:        "absolute",
+            left:            "50%",
+            top:             "50%",
+            transform:       "translateX(-50%) scaleX(1)",
+            transformOrigin: "center center",
+            translate:       "0 -50%",
+            opacity:         0,
+          }}
+        />
+      ))}
+
+      {/* Main sharp text layer */}
       <div
-        ref={elRef}
-        aria-label="Meditations on Ruins"
-        style={{
-          fontFamily: "var(--font-public-sans), sans-serif",
-          fontWeight: 400,
-          fontSize: "clamp(10px, 1.7vw, 26px)",
-          letterSpacing: "0.4em",
-          color: "oklch(98.6% 0.002 67.8)",
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-          opacity: 0,
-          willChange: "filter, opacity",
-          paddingRight: "0.4em",
-        }}
+        ref={mainRef}
+        style={{ ...textStyle, position: "relative" }}
       />
-    </>
+    </div>
   );
 }
