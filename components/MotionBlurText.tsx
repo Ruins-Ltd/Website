@@ -3,43 +3,38 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 
-const TEXTS: string[]  = ["MEDITATIONS ON RUINS", "RUINS.LTD"];
-const HOLD     = 2.4;
-const OUT_DUR  = 0.65;
-const IN_DUR   = 0.65;
-const TWOS_MS  = 1000 / 12;
+const TEXTS: string[] = ["MEDITATIONS ON RUINS", "RUINS.LTD"];
+const HOLD    = 2.4;
+const OUT_DUR = 0.65;
+const IN_DUR  = 0.65;
+const TWOS_MS = 1000 / 12;
 
-// Ghost layers — each is the same text, stretched and faded
-// to simulate a horizontal motion smear
 const GHOSTS = [
-  { scaleX: 1.04, opacity: 0.5 },
-  { scaleX: 1.12, opacity: 0.3 },
+  { scaleX: 1.04, opacity: 0.5  },
+  { scaleX: 1.12, opacity: 0.3  },
   { scaleX: 1.28, opacity: 0.18 },
   { scaleX: 1.55, opacity: 0.10 },
   { scaleX: 1.90, opacity: 0.05 },
 ];
 
 export default function MotionBlurText() {
-  const wrapRef    = useRef<HTMLDivElement>(null);
-  const mainRef    = useRef<HTMLDivElement>(null);
-  const ghostRefs  = useRef<(HTMLDivElement | null)[]>([]);
+  const wrapRef   = useRef<HTMLDivElement>(null);
+  const mainRef   = useRef<HTMLDivElement>(null);
+  const ghostRefs = useRef<(HTMLDivElement | null)[]>([]);
   const currentRef = useRef<number>(0);
 
   useEffect(() => {
-    const wrap   = wrapRef.current;
-    const main   = mainRef.current;
-    const ghosts = ghostRefs.current;
+    const wrap  = wrapRef.current;
+    const main  = mainRef.current;
     if (!wrap || !main) return;
 
-    // proxy: 0 = sharp, 1 = full smear
-    const proxy = { t: 0 };
-
+    const proxy  = { t: 0 };
     let lastSnap = 0;
     let snappedT = 0;
 
     function applySmear(t: number) {
-  if (main) main.style.opacity = String(1 - t * 0.85);
-      ghosts.forEach((g, i) => {
+      main.style.opacity = String(1 - t * 0.85);
+      ghostRefs.current.forEach((g, i) => {
         if (!g) return;
         const def = GHOSTS[i];
         if (!def) return;
@@ -60,12 +55,11 @@ export default function MotionBlurText() {
 
     function setAllText(txt: string) {
       main.textContent = txt;
-      ghosts.forEach(g => { if (g) g.textContent = txt; });
+      ghostRefs.current.forEach(g => { if (g) g.textContent = txt; });
     }
 
     function transition() {
       const next = (currentRef.current + 1) % TEXTS.length;
-
       gsap.timeline({
         onComplete: () => {
           currentRef.current = next;
@@ -89,7 +83,6 @@ export default function MotionBlurText() {
         });
     }
 
-    // Initial reveal — smooth, no stutter on load
     setAllText(TEXTS[0] ?? "");
     applySmear(1);
     wrap.style.opacity = "1";
@@ -103,9 +96,7 @@ export default function MotionBlurText() {
       onComplete: () => { gsap.delayedCall(HOLD, transition); },
     });
 
-    return () => {
-      gsap.killTweensOf(proxy);
-    };
+    return () => { gsap.killTweensOf(proxy); };
   }, []);
 
   const textStyle: React.CSSProperties = {
@@ -127,7 +118,6 @@ export default function MotionBlurText() {
       style={{ position: "relative", opacity: 0 }}
       aria-label="Meditations on Ruins"
     >
-      {/* Ghost smear layers — rendered behind main */}
       {GHOSTS.map((_, i) => (
         <div
           key={i}
@@ -145,8 +135,6 @@ export default function MotionBlurText() {
           }}
         />
       ))}
-
-      {/* Main sharp text layer */}
       <div
         ref={mainRef}
         style={{ ...textStyle, position: "relative" }}
