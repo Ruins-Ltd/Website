@@ -33,7 +33,8 @@ export default function MotionBlurText() {
     let snappedT = 0;
 
     function applySmear(t: number) {
-      main.style.opacity = String(1 - t * 0.85);
+  if (!main) return;
+  main.style.opacity = String(1 - t * 0.85);
       ghostRefs.current.forEach((g, i) => {
         if (!g) return;
         const def = GHOSTS[i];
