@@ -55,7 +55,8 @@ export default function MotionBlurText() {
     }
 
     function setAllText(txt: string) {
-      main.textContent = txt;
+  if (!main) return;
+  main.textContent = txt;
       ghostRefs.current.forEach(g => { if (g) g.textContent = txt; });
     }
 
