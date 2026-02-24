@@ -56,7 +56,7 @@ export default function MotionBlurText() {
           onUpdate: () => applyBlurOnTwos(proxy.blur),
         })
         .call(() => {
-          el.textContent = TEXTS[next] ?? "";
+          if (el) el.textContent = TEXTS[next] ?? "";
         })
         .to(proxy, {
           blur: 0,
