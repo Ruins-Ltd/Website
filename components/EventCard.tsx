@@ -5,7 +5,7 @@ import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import * as THREE from "three";
 
-const RA_URL = "https://ra.co/events/2460561";
+const RA_URL = "https://ra.co/pre/2460561";
 
 function PosterMesh() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -21,20 +21,22 @@ function PosterMesh() {
   const POSTER_W = 2.2;
   const POSTER_H = POSTER_W * (1123 / 794);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!meshRef.current) return;
 
     if (!drag.current.active) {
       if (hovered) {
-        velocity.current.x *= 0.88;
-        velocity.current.y *= 0.88;
+        velocity.current.x *= 0.85;
+        velocity.current.y *= 0.85;
+        rotation.current.x += velocity.current.x;
+        rotation.current.y += velocity.current.y;
       } else {
-        velocity.current.y += (0.15 - rotation.current.y) * 0.012;
-        velocity.current.x += (0.1 - rotation.current.x) * 0.012;
-        velocity.current.x *= 0.96;
-        velocity.current.y += Math.sin(Date.now() * 0.0004) * 0.0004;
-        velocity.current.y *= 0.96;
+        const t = state.clock.elapsedTime;
+        rotation.current.x = Math.sin(t * 0.31) * 0.18;
+        rotation.current.y = Math.sin(t * 0.19) * 0.22;
+        meshRef.current.rotation.z = Math.sin(t * 0.13) * 0.06;
       }
+    } else {
       rotation.current.x += velocity.current.x;
       rotation.current.y += velocity.current.y;
     }
