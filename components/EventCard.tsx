@@ -1,22 +1,21 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import * as THREE from "three";
 
 const RA_URL = "https://ra.co/pre/2460561";
 
-function PosterMesh() {
+function PosterMesh({ dragRef, clickStartRef }: {
+  dragRef: React.MutableRefObject<{ active: boolean; lastX: number; lastY: number }>;
+  clickStartRef: React.MutableRefObject<{ x: number; y: number } | null>;
+}) {
   const meshRef = useRef<THREE.Mesh>(null);
   const texture = useLoader(TextureLoader, "/poster.webp");
-
-  const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const drag = useRef({ active: false, lastX: 0, lastY: 0 });
   const rotation = useRef({ x: 0.1, y: 0.15 });
   const velocity = useRef({ x: 0, y: 0 });
-  const clickStart = useRef<{ x: number; y: number } | null>(null);
 
   const POSTER_W = 2.2;
   const POSTER_H = POSTER_W * (1123 / 794);
@@ -24,7 +23,7 @@ function PosterMesh() {
   useFrame((state, delta) => {
     if (!meshRef.current) return;
 
-    if (!drag.current.active) {
+    if (!dragRef.current.active) {
       if (hovered) {
         velocity.current.x *= 0.85;
         velocity.current.y *= 0.85;
@@ -44,7 +43,7 @@ function PosterMesh() {
     meshRef.current.rotation.x = rotation.current.x;
     meshRef.current.rotation.y = rotation.current.y;
 
-    const targetScale = hovered && !drag.current.active ? 1.04 : 1;
+    const targetScale = hovered && !dragRef.current.active ? 1.04 : 1;
     meshRef.current.scale.lerp(
       new THREE.Vector3(targetScale, targetScale, targetScale),
       delta * 6
@@ -53,63 +52,84 @@ function PosterMesh() {
 
   const onPointerDown = useCallback((e: any) => {
     e.stopPropagation();
-    drag.current = { active: true, lastX: e.clientX, lastY: e.clientY };
-    clickStart.current = { x: e.clientX, y: e.clientY };
-    setDragging(true);
-  }, []);
-
-  const onPointerMove = useCallback((e: any) => {
-    if (!drag.current.active) return;
-    const dx = e.clientX - drag.current.lastX;
-    const dy = e.clientY - drag.current.lastY;
-    velocity.current.y = dx * 0.01;
-    velocity.current.x = dy * 0.01;
-    rotation.current.y += dx * 0.01;
-    rotation.current.x += dy * 0.01;
-    drag.current.lastX = e.clientX;
-    drag.current.lastY = e.clientY;
-  }, []);
-
-  const onPointerUp = useCallback((e: any) => {
-    drag.current.active = false;
-    setDragging(false);
-    if (clickStart.current) {
-      const dx = Math.abs(e.clientX - clickStart.current.x);
-      const dy = Math.abs(e.clientY - clickStart.current.y);
-      if (dx < 4 && dy < 4) {
-        window.open(RA_URL, "_blank", "noopener,noreferrer");
-      }
-      clickStart.current = null;
-    }
-  }, []);
-
-  const mat = (
-    <meshStandardMaterial map={texture} side={THREE.DoubleSide} />
-  );
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    dragRef.current = { active: true, lastX: clientX, lastY: clientY };
+    clickStartRef.current = { x: clientX, y: clientY };
+  }, [dragRef, clickStartRef]);
 
   return (
     <mesh
       ref={meshRef}
       onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
       onPointerEnter={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
       <planeGeometry args={[POSTER_W, POSTER_H]} />
-      {mat}
+      <meshStandardMaterial map={texture} side={THREE.DoubleSide} />
     </mesh>
   );
 }
 
 export default function EventCard() {
   const [isDragging, setIsDragging] = useState(false);
+  const drag = useRef({ active: false, lastX: 0, lastY: 0 });
+  const clickStart = useRef<{ x: number; y: number } | null>(null);
+  const velocity = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const getXY = (e: PointerEvent | TouchEvent) => {
+      if ("touches" in e) {
+        return { x: e.touches[0]?.clientX ?? 0, y: e.touches[0]?.clientY ?? 0 };
+      }
+      return { x: e.clientX, y: e.clientY };
+    };
+
+    const onMove = (e: PointerEvent | TouchEvent) => {
+      if (!drag.current.active) return;
+      const { x, y } = getXY(e);
+      const dx = x - drag.current.lastX;
+      const dy = y - drag.current.lastY;
+      velocity.current.y = dx * 0.01;
+      velocity.current.x = dy * 0.01;
+      drag.current.lastX = x;
+      drag.current.lastY = y;
+    };
+
+    const onUp = (e: PointerEvent | TouchEvent) => {
+      if (!drag.current.active) return;
+      drag.current.active = false;
+      setIsDragging(false);
+      if (clickStart.current) {
+        const { x, y } = getXY(e as PointerEvent);
+        const dx = Math.abs(x - clickStart.current.x);
+        const dy = Math.abs(y - clickStart.current.y);
+        if (dx < 8 && dy < 8) {
+          window.open(RA_URL, "_blank", "noopener,noreferrer");
+        }
+        clickStart.current = null;
+      }
+    };
+
+    window.addEventListener("pointermove", onMove as any);
+    window.addEventListener("pointerup", onUp as any);
+    window.addEventListener("touchmove", onMove as any, { passive: true });
+    window.addEventListener("touchend", onUp as any);
+
+    return () => {
+      window.removeEventListener("pointermove", onMove as any);
+      window.removeEventListener("pointerup", onUp as any);
+      window.removeEventListener("touchmove", onMove as any);
+      window.removeEventListener("touchend", onUp as any);
+    };
+  }, []);
+
+  const onPointerDown = () => setIsDragging(true);
+
   return (
     <div
       style={{ width: "100%", height: "100%", cursor: isDragging ? "grabbing" : "grab" }}
-      onMouseDown={() => setIsDragging(true)}
-      onMouseUp={() => setIsDragging(false)}
+      onPointerDown={onPointerDown}
     >
       <Canvas
         camera={{ position: [0, 0, 4.5], fov: 45 }}
@@ -117,7 +137,7 @@ export default function EventCard() {
       >
         <ambientLight intensity={1.2} />
         <directionalLight position={[3, 4, 5]} intensity={0.6} />
-        <PosterMesh />
+        <PosterMesh dragRef={drag} clickStartRef={clickStart} />
       </Canvas>
     </div>
   );
