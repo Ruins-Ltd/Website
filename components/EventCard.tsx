@@ -5,7 +5,7 @@ import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import * as THREE from "three";
 
-const RA_URL = "https://ra.co/pre/2460561";
+const RA_URL = "https://ra.co/events/2460561";
 
 function PosterMesh() {
   const meshRef = useRef<THREE.Mesh>(null);
