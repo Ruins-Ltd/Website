@@ -16,14 +16,14 @@ export default function Home() {
         height: "100dvh",
         width: "100vw",
         gap: "0",
-        padding: "40px 24px 24px",
+        padding: "40px 0 0",
         boxSizing: "border-box",
       }}
     >
       <div style={{ flexShrink: 0 }}>
         <SpinningLogo />
       </div>
-      <div style={{ flex: 1, width: "100%", maxWidth: 520, minHeight: 0 }}>
+      <div style={{ flex: 1, width: "100vw", minHeight: 0 }}>
         <EventCard />
       </div>
     </main>
