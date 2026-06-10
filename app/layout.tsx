@@ -12,7 +12,7 @@ const publicSans = Public_Sans({
 export const metadata: Metadata = {
   title: "Meditations on Ruins",
   description:
-    "An audiovisual and music event exploring the darker edges of sound — dub techno, techno, broken beat, dubstep and garage.",
+    "Ruins. A London imprint moving through tilted, dub-forward sound.",
   metadataBase: new URL("https://ruins.ltd"),
   openGraph: {
     title: "Meditations on Ruins",
