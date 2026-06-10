@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Meditations on Ruins",
     description:
-      "An audiovisual and music event exploring the darker edges of sound.",
+      "Ruins. A London imprint moving through tilted, dub-forward sound.",
     url: "https://ruins.ltd",
     siteName: "Meditations on Ruins",
     locale: "en_GB",
